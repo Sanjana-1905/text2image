@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+env/
+*.pkl
+*.pt
+*.safetensors
+
+# Node / React
+node_modules/
+build/
+npm-debug.log
+yarn-error.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Hugging Face cache (optional, huge)
+~/.cache/huggingface/
