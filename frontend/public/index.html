@@ -4,8 +4,305 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Image Frontend</title>
+  <style>
+    /* Simple theme tokens (no gradients) */
+    :root{
+      --accent: #2563eb; /* professional blue */
+      --accent-contrast: #ffffff;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --text: #111317;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+    }
+    /* Layout */
+    html, body, #root { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+    }
+    /* Page container (top/bottom breathing room, no vertical centering) */
+    #root {
+      display: block;
+      padding: 56px 20px 88px 20px;
+    }
+    /* Style the top-level React container (first child div) */
+    #root > div:first-child {
+      width: 100%;
+      max-width: 840px;
+      box-sizing: border-box;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--accent);
+      border-radius: 12px;
+      padding: 28px 28px 32px 28px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      grid-auto-rows: min-content;
+      gap: 16px 16px;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.06);
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 650;
+      margin: 8px 0 16px 0;
+      text-align: center;
+      color: #1f2937;
+    }
+    /* Place existing children on a grid without touching React */
+    #root > div:first-child > h1 { grid-column: 1 / -1; margin-bottom: 4px; }
+    /* Recorder (first div) on the left */
+    #root > div:first-child > div:nth-of-type(1) { grid-column: 1; align-self: end; }
+    /* Textarea wrapper (second div) spans full width */
+    #root > div:first-child > div:nth-of-type(2) { grid-column: 1 / -1; }
+    /* Generate button wrapper (third div) on the right */
+    #root > div:first-child > div:nth-of-type(3) { grid-column: 2; justify-self: end; align-self: start; }
+    /* Result block (fourth div) spans full width */
+    #root > div:first-child > div:nth-of-type(4) { grid-column: 1 / -1; margin-top: 8px; }
+    h3 { margin: 20px 0 8px 0; font-size: 16px; color: var(--muted); font-weight: 600; }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      resize: vertical;
+      background: var(--surface);
+      color: var(--text);
+      min-height: 120px;
+    }
+    button {
+      padding: 10px 14px;
+      border: 1px solid var(--accent);
+      background: #eef2ff;
+      color: #1e3a8a;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #e0e7ff; }
+    button:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* Responsive tweaks */
+    @media (max-width: 820px){
+      #root { padding: 36px 16px 64px 16px; }
+      #root > div:first-child { grid-template-columns: 1fr; gap: 14px; padding: 22px; }
+      #root > div:first-child > div:nth-of-type(1) { grid-column: 1; }
+      #root > div:first-child > div:nth-of-type(3) { grid-column: 1; justify-self: stretch; }
+      #root > div:first-child > div:nth-of-type(3) button { width: 100%; }
+    }
+    img[alt="generated"] {
+      display: block;
+      margin: 12px auto;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    /* Simple loading overlay */
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.12);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .loading-card {
+      width: 92%;
+      max-width: 420px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .loading-title {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text);
+    }
+    .progress-wrap {
+      margin-top: 8px;
+      width: 100%;
+      background: #eff2f7;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.2s ease;
+    }
+    .progress-label { text-align: center; font-size: 13px; margin-top: 8px; color: var(--muted); }
+
+    /* Download button under result image */
+    .download-wrap { text-align: center; margin-top: 8px; }
+    .download-btn { display: inline-block; border: 1px solid var(--accent); background: #eef2ff; color: #1e3a8a; padding: 8px 12px; border-radius: 8px; text-decoration: none; }
+    .download-btn:hover { background: #e0e7ff; }
+  </style>
 </head>
 <body>
   <div id="root"></div>
+
+  <!-- Loading overlay (simple, no gradients/fancy visuals) -->
+  <div id="loadingOverlay">
+    <div class="loading-card">
+      <div class="loading-title" id="loadingTitle">Working…</div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="progress-label"><span id="progressText">0</span>%</div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const overlay = document.getElementById('loadingOverlay');
+      const titleEl = document.getElementById('loadingTitle');
+      const bar = document.getElementById('progressBar');
+      const pctText = document.getElementById('progressText');
+      let timer = null;
+      let pct = 0;
+
+      function setProgress(value){
+        pct = Math.max(0, Math.min(100, value|0));
+        bar.style.width = pct + '%';
+        pctText.textContent = pct;
+      }
+      function startLoading(label){
+        titleEl.textContent = label || 'Working…';
+        overlay.style.display = 'flex';
+        setProgress(0);
+        clearInterval(timer);
+        timer = setInterval(() => {
+          // Simulated progress up to 90% while waiting
+          if (pct < 90) setProgress(pct + Math.max(1, Math.floor((90 - pct) * 0.07)));
+        }, 200);
+      }
+      function completeLoading(){
+        clearInterval(timer);
+        setProgress(100);
+        setTimeout(() => { overlay.style.display = 'none'; }, 250);
+      }
+
+      // Patch fetch to show overlay for long operations without changing app code
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = function(input, init){
+        try {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        const isApi = url.startsWith('http://localhost:8000/');
+        const isTranscribe = url.includes('/transcribe');
+        const isGenerate = url.includes('/generate');
+        if (!isApi) {
+          // Bypass non-API requests entirely
+          return originalFetch(input, init);
+        }
+        let progressKey = null;
+        if (isTranscribe || isGenerate){
+          startLoading(isTranscribe ? 'Transcribing audio…' : 'Generating image…');
+        }
+        // Attach progress_key for generate calls by augmenting FormData
+        if (isGenerate && init && init.body instanceof FormData){
+          progressKey = Math.random().toString(36).slice(2);
+          init.body.append('progress_key', progressKey);
+          // Start polling progress
+          const poll = () => {
+            if (!progressKey) return;
+            originalFetch(`http://localhost:8000/progress/${progressKey}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(j => { if (!j) return; if (typeof j.progress === 'number') setProgress(j.progress); if (j.progress >= 100) progressKey = null; })
+              .catch(()=>{})
+              .finally(() => { if (progressKey) setTimeout(poll, 300); });
+          };
+          setTimeout(poll, 250);
+        }
+
+        return originalFetch(input, init).then((res) => {
+          if (isTranscribe || isGenerate){
+            if (!progressKey) { setProgress(Math.max(pct, 95)); }
+            setTimeout(completeLoading, 300);
+          }
+          return res;
+        }).catch((err) => {
+          if (isTranscribe || isGenerate){
+            completeLoading();
+          }
+          throw err;
+        });
+        } catch (e) {
+          // Fallback path if our wrapper logic throws unexpectedly
+          return originalFetch(input, init);
+        }
+      };
+
+      // Add a Download button for the generated image without modifying React code
+      const observer = new MutationObserver(() => {
+        const img = document.querySelector('img[alt="generated"]');
+        if (!img) return;
+
+        let wrap = img.nextElementSibling;
+        const needWrap = !wrap || !wrap.classList || !wrap.classList.contains('download-wrap');
+        if (needWrap){
+          wrap = document.createElement('div');
+          wrap.className = 'download-wrap';
+          img.after(wrap);
+        }
+
+        let btn = wrap.querySelector('a.download-btn');
+        if (!btn){
+          btn = document.createElement('a');
+          btn.className = 'download-btn';
+          btn.textContent = 'Download Image';
+          btn.setAttribute('download', 'generated.png');
+          btn.href = img.currentSrc || img.src || '#';
+          btn.style.border = '1px solid #c7c7c7';
+          btn.style.background = '#efefef';
+          btn.style.padding = '8px 12px';
+          btn.style.borderRadius = '6px';
+          btn.style.textDecoration = 'none';
+          btn.style.color = '#111';
+          // Force real download cross-origin by fetching blob and saving locally
+          btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const href = img.currentSrc || img.src;
+            if (!href) return;
+            try {
+              const response = await fetch(href, { mode: 'cors' });
+              const blob = await response.blob();
+              const objectUrl = URL.createObjectURL(blob);
+              const tmpLink = document.createElement('a');
+              tmpLink.href = objectUrl;
+              tmpLink.download = 'generated.png';
+              document.body.appendChild(tmpLink);
+              tmpLink.click();
+              document.body.removeChild(tmpLink);
+              URL.revokeObjectURL(objectUrl);
+            } catch (err) {
+              // Fallback: navigate to image if download fails
+              window.open(href, '_blank');
+            }
+          });
+          wrap.innerHTML = '';
+          wrap.appendChild(btn);
+        }
+        // Keep href in sync if image changes
+        const src = img.currentSrc || img.src || '#';
+        if (btn.href !== src) btn.href = src;
+      });
+
+      observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+    })();
+  </script>
 </body>
 </html>

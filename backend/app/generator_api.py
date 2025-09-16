@@ -21,7 +21,13 @@ print("Model loaded successfully!")
 # -----------------------------
 # Image generation function
 # -----------------------------
-def generate_image_bytes(prompt: str, width: int = 512, height: int = 512) -> bytes:
+def generate_image_bytes(
+    prompt: str,
+    width: int = 512,
+    height: int = 512,
+    num_inference_steps: int = 50,
+    progress_callback=None,
+) -> bytes:
     """
     Generate an image from a text prompt using Stable Diffusion.
     Returns image bytes in PNG format.
@@ -35,7 +41,24 @@ def generate_image_bytes(prompt: str, width: int = 512, height: int = 512) -> by
         bytes: PNG image bytes.
     """
     # Generate image
-    image = pipe(prompt, height=height, width=width).images[0]
+    def _callback(step: int, timestep, latents):
+        if progress_callback is not None:
+            try:
+                # step is 0-indexed; convert to percentage of total steps
+                completed = min(step + 1, num_inference_steps)
+                pct = int(completed * 100 / max(1, num_inference_steps))
+                progress_callback(pct)
+            except Exception:
+                pass
+
+    image = pipe(
+        prompt,
+        height=height,
+        width=width,
+        num_inference_steps=num_inference_steps,
+        callback=_callback if progress_callback is not None else None,
+        callback_steps=1,
+    ).images[0]
 
     # Convert image to bytes
     buf = BytesIO()

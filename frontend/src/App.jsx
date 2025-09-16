@@ -23,13 +23,13 @@ export default function App(){
 
   return (
     <div style={{padding:20}}>
-      <h1>CPU-friendly Text/Voice → Image</h1>
+      <h1>Text/Voice → Image</h1>
       <Recorder onTranscribed={onTranscribed}/>
       <div>
         <textarea value={prompt} onChange={(e)=>setPrompt(e.target.value)} rows={4} cols={60}/>
       </div>
       <div>
-        <button onClick={generate}>Generate Image (cloud)</button>
+        <button onClick={generate}>Generate Image</button>
       </div>
       {imageUrl && <div><h3>Result</h3><img src={imageUrl} style={{maxWidth:'512px'}} alt="generated"/></div>}
     </div>
